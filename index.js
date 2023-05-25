@@ -56,16 +56,15 @@ app.post('/users', (req, res) => {
         let email = req.body.email;
         let password = req.body.password;
         let query = "".concat( sql, '(' , user_name, ',' , email , ',' , password ,');' );
-        db.run(query, (err, users) => {
+        db.run(query, (err) => {
             if(err){
-                res.status(400).json({"Error":"Bad Request"});
-                return;
+                res.status(400).json({"Error":"Bad Request","Callback":err.message});
             }
-            res.json(users);s
-            return;
+            res.status(200);
         });
+        return;
     }
-    res.status(400).json({"Error":"Bad Request"});    
+    res.status(400).json({"Error":"Bad Request"});
 });
 
 
