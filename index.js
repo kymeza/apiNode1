@@ -60,7 +60,7 @@ app.post('/users', (req, res) => {
             if(err){
                 res.status(400).json({"Error":"Bad Request","Callback":err.message});
             }
-            res.status(200);
+            res.status(201);
         });
         return;
     }
