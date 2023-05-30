@@ -52,20 +52,25 @@ app.get('/users', (req, res) => {
 app.post('/users', (req, res) => {
     let sql = "INSERT INTO users (name, email, password) VALUES ";
     if(req.body) {
+        //Leer el body del Request y ESCAPAR LOS CARACTERES ESPECIALES
+        //PARAMETRIZAR LA QUERY
+        //UTILIZAR LIBREARIAS PARA CONSULTAS SIN QUERYS
+
         let user_name = req.body.name;
         let email = req.body.email;
         let password = req.body.password;
         let query = "".concat( sql, '(' , user_name, ',' , email , ',' , password ,');' );
         db.run(query, (err) => {
             if(err){
-                res.status(400).json({"Error":"Bad Request","Callback":err.message});
+                res.status(400).json({"Error":"Bad Request","callback":err.message});
             }
-            res.status(201);
+            res.status(201).end();
         });
         return;
     }
     res.status(400).json({"Error":"Bad Request"});
 });
+
 
 
 
