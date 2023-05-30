@@ -33,6 +33,11 @@ db.serialize(function() {
 //inicializamos la app con Express
 let app = express(); 
 app.use(bodyParser.json());
+app.set('view engine','ejs');
+
+app.use(bodyParser.urlencoded({extended: true}));
+
+
 
 //Definimos metodo GET en endpoint /users para probar la API en cuestion
 app.get('/users', (req, res) => {
@@ -50,17 +55,18 @@ app.get('/users', (req, res) => {
 
 //Definir metodo POST en endpoint /users para crear usuarios mediante la API
 app.post('/users', (req, res) => {
-    let sql = "INSERT INTO users (name, email, password) VALUES ";
+    let sql = "INSERT INTO users (name, email, password) VALUES (?, ?, ?)";
     if(req.body) {
         //Leer el body del Request y ESCAPAR LOS CARACTERES ESPECIALES
         //PARAMETRIZAR LA QUERY
         //UTILIZAR LIBREARIAS PARA CONSULTAS SIN QUERYS
-
         let user_name = req.body.name;
         let email = req.body.email;
         let password = req.body.password;
-        let query = "".concat( sql, '(' , user_name, ',' , email , ',' , password ,');' );
-        db.run(query, (err) => {
+        
+        //let query = "".concat( sql, '(' , user_name, ',' , email , ',' , password ,');' );
+        
+        db.run(sql, [user_name, email, password], (err) => {
             if(err){
                 res.status(400).json({"Error":"Bad Request","callback":err.message});
             }
@@ -71,7 +77,15 @@ app.post('/users', (req, res) => {
     res.status(400).json({"Error":"Bad Request"});
 });
 
-
+app.get('/usersView', (req, res) => {
+    db.all("SELECT name, email FROM users",(err, rows) => {
+        if(err) {
+            res.status(500).json({"Error":"Internal Server Error"});
+            return;
+        }
+        res.render('users', {users: rows});
+    });
+});
 
 
 //Dejamos correr la App en el puerto 9000 (HTTP) no encriptado.

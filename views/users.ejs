@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        Lista Usuarios
+    </head>
+    <body>
+        <Table>
+            <tr>
+                <th>Nombre</th>
+                <th>Email</th>
+            </tr>
+            <% users.forEach(function(user){ %>
+                <tr>
+                    <td><%- user.name %></td>
+                    <td><%- user.email %></td>
+                </tr>
+            <% }); %>
+        </Table>
+    </body>
+</html>
