@@ -7,17 +7,26 @@ const bodyParser = require('body-parser');
 let db = new sqlite3.Database(':memory:');
 
 //leemos el archivo secret.txt que actuará como sal para las contraseñas posteriores
+/*
 var salt;
 fs.readFile('secret.txt', 'utf-8', (err,data) => {
     if (err){
         console.log('Error: ', err);
         return;
     }
-    salt = data;
+    salt = data.trim();
+    process.env["salt"] = salt;
 });
+console.log(process.env.salt);
+*/
+
+var data = fs.readFileSync("secret.txt", "utf-8");
+data.trim();
+process.env["salt"] = data;
+console.log(process.env.salt);
 
 //creamos la variable ambiente que contiene la sal antes leida
-process.env["salt"] = salt;
+
 
 //inicializamos la base de datos
 db.serialize(function() {
@@ -86,6 +95,7 @@ app.get('/usersView', (req, res) => {
         res.render('users', {users: rows});
     });
 });
+
 
 
 //Dejamos correr la App en el puerto 9000 (HTTP) no encriptado.
