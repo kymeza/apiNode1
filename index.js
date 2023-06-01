@@ -3,6 +3,9 @@ const sqlite3 = require('sqlite3').verbose();
 const fs = require('fs');
 const bodyParser = require('body-parser');
 
+const crypto = require('crypto');
+const session = require('express-session')
+
 //Creamos una BaseDatos SQLite en memoria para testear
 let db = new sqlite3.Database(':memory:');
 
@@ -21,8 +24,7 @@ console.log(process.env.salt);
 */
 
 var data = fs.readFileSync("secret.txt", "utf-8");
-data.trim();
-process.env["salt"] = data;
+process.env["salt"] = data.trim();
 console.log(process.env.salt);
 
 //creamos la variable ambiente que contiene la sal antes leida
@@ -46,10 +48,14 @@ app.set('view engine','ejs');
 
 app.use(bodyParser.urlencoded({extended: true}));
 
-
+app.use(session({
+    secret: process.env.salt,
+    resave: false,
+    cookie: {secure: false}
+}));
 
 //Definimos metodo GET en endpoint /users para probar la API en cuestion
-app.get('/users', (req, res) => {
+app.get('/users', asegurarIdentidad,(req, res) => {
     db.all('SELECT * FROM users', function(err, rows) {
         if(err) {
             res.status(500).json({"Error":"Internal Server Error"});
@@ -86,7 +92,7 @@ app.post('/users', (req, res) => {
     res.status(400).json({"Error":"Bad Request"});
 });
 
-app.get('/usersView', (req, res) => {
+app.get('/usersView', asegurarIdentidad ,(req, res) => {
     db.all("SELECT name, email FROM users",(err, rows) => {
         if(err) {
             res.status(500).json({"Error":"Internal Server Error"});
@@ -96,7 +102,42 @@ app.get('/usersView', (req, res) => {
     });
 });
 
+app.get('/login', (req,res) => {
+    res.render("login");
+});
 
+app.post('/login', (req, res) => {
+    let email = req.body.email;
+    let password = req.body.password;
+
+    let passwordConSalt = password.concat(process.env.salt);
+    let hash = crypto.createHash('sha256');
+    hash.update(passwordConSalt);
+    let passwordHash = hash.digest('hex');
+
+    let sql = "SELECT * FROM users WHERE email = ? AND password = ?";
+    db.get(sql, [email, passwordHash], (err, row) => {
+        if(err) {
+            res.status(500).json({"Error 500":"Internal Server Error"});
+            return;
+        }
+
+        if(row) {
+            req.session.email = email;
+            res.redirect('/usersView');
+        } else {
+            res.status(400).json({"error": "Email o Contraseña no válidos"});
+        }
+    });
+});
+
+function asegurarIdentidad(req, res, next) {
+    if (req.session.email) {
+        return next();
+    } else {
+        res.redirect('/login');
+    }
+}
 
 //Dejamos correr la App en el puerto 9000 (HTTP) no encriptado.
 app.listen(9000);
