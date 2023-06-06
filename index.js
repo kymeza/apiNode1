@@ -10,6 +10,7 @@ const session = require('express-session')
 let db = new sqlite3.Database(':memory:');
 
 const jwt = require('jsonwebtoken');
+const cookieParser = require('cookie-parser');
 
 //leemos el archivo secret.txt que actuará como sal para las contraseñas posteriores
 /*
@@ -50,11 +51,14 @@ app.set('view engine','ejs');
 
 app.use(bodyParser.urlencoded({extended: true}));
 
+app.use(cookieParser());
+/*
 app.use(session({
     secret: process.env.salt,
     resave: false,
     cookie: {secure: false}
 }));
+*/
 
 //Definimos metodo GET en endpoint /users para probar la API en cuestion
 app.get('/users', asegurarIdentidad,(req, res) => {
@@ -156,13 +160,15 @@ app.post('/login', (req, res) => {
                 process.env.salt,
                 {expiresIn: '1h', algorithm: 'HS256'}
             );
-            res.json({'token':token}).redirect('/usersView');
+            res.cookie('token',token, {secure: false} );
+            res.redirect('/usersView');
         } else {
             res.status(400).json({"error": "Email o Contraseña no válidos"});
         }
     });
 });
 
+/*
 function asegurarIdentidad(req, res, next) {
     if (req.session.email) {
         return next();
@@ -170,6 +176,19 @@ function asegurarIdentidad(req, res, next) {
         res.redirect('/login');
     }
 }
+*/
+
+//Para leer una cookie, necsitamos de un Parser
+//El parser a instalar es 'cookie-parser'
+
+function asegurarIdentidad(req, res, next) {
+    if (req.cookies.token) {
+        return next();
+    } else {
+        res.redirect('/login');
+    }
+}
+
 
 //Dejamos correr la App en el puerto 9000 (HTTP) no encriptado.
 app.listen(9000);
