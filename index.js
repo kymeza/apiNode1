@@ -37,6 +37,7 @@ console.log(process.env.salt);
 db.serialize(function() {
     db.run("CREATE TABLE users (name TEXT, email TEXT, password TEXT)");
     db.run("INSERT INTO users (name, email, password) VALUES ('admin','admin@admin.cl','bd816339fa5c58cf528f29361b9a61aec59b88e55b3e0e0b91d15762ba128181')")
+    db.run("INSERT INTO users (name, email, password) VALUES ('admin','admin@admin.cl','dd4a30a8817fecab6f97e10935e0917bea51a5325ab6222e074b7d5922408eaa')")
     //INFO: database created, with example users
 });
 
@@ -183,7 +184,14 @@ function asegurarIdentidad(req, res, next) {
 
 function asegurarIdentidad(req, res, next) {
     if (req.cookies.token) {
-        return next();
+        let tokenToVerify = req.cookies.token;
+        jwt.verify(tokenToVerify, process.env.salt, function(err, decoded) {
+            if (err) {
+                res.redirect('/login');
+            } else {
+                return next();
+            }
+        });   
     } else {
         res.redirect('/login');
     }
