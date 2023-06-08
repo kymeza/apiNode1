@@ -12,6 +12,13 @@ let db = new sqlite3.Database(':memory:');
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
 
+const { exec } = require('child_process');
+
+const path = require('path');
+const multer  = require('multer');
+const upload = multer({ dest: 'uploads/' });
+
+
 //leemos el archivo secret.txt que actuará como sal para las contraseñas posteriores
 /*
 var salt;
@@ -53,13 +60,26 @@ app.set('view engine','ejs');
 app.use(bodyParser.urlencoded({extended: true}));
 
 app.use(cookieParser());
-/*
+
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+
 app.use(session({
     secret: process.env.salt,
     resave: false,
-    cookie: {secure: false}
+    cookie: {secure: false},
 }));
-*/
+
+app.use((req, res, next) => {
+    if (!req.session.ipAddress) {
+      req.session.ipAddress = req.ip;
+    }
+  
+    if (req.session.ipAddress !== req.ip) {
+      return res.status(403).send('Session hijacking attempt detected. Session has been invalidated.');
+    }
+    next();
+});
 
 //Definimos metodo GET en endpoint /users para probar la API en cuestion
 app.get('/users', asegurarIdentidad,(req, res) => {
@@ -181,6 +201,95 @@ function asegurarIdentidad(req, res, next) {
 
 //Para leer una cookie, necsitamos de un Parser
 //El parser a instalar es 'cookie-parser'
+
+app.get('/upload',asegurarIdentidad, (req, res) => {
+    res.render('upload');
+});
+
+app.post('/upload', asegurarIdentidad, upload.single('file'), (req, res) => {
+    // Warning: No security checks here. This is for demonstration purposes only.
+    
+    
+    let targetPath = path.join(__dirname, 'uploads', req.body.filename+path.extname(req.file.originalname));
+
+
+
+    fs.rename(req.file.path, targetPath, (err) => {
+        if(err){
+            console.log(err);
+            res.status(500).json({"Error":"Server Error"+err});
+            return;
+        }
+        res.status(200).json({"Message":"File Uploaded"});
+    });
+});
+
+/* VERSION PROTEGIDA
+app.post('/upload', asegurarIdentidad, upload.single('file'), (req, res) => {
+    // Use path.basename to ensure the path is only a filename and not a directory path
+    let filename = path.basename(req.body.filename);
+
+    // Check filename to ensure it is valid and does not contain directory paths
+    if (!filename.match(/^[\w\-]+\.(\w+)$/)) {
+        return res.status(400).json({"Error":"Invalid filename"});
+    }
+
+    let targetPath = path.join(__dirname, 'uploads', filename);
+
+    fs.rename(req.file.path, targetPath, (err) => {
+        if(err){
+            console.log(err);
+            res.status(500).json({"Error":"Server Error"+err});
+            return;
+        }
+        res.status(200).json({"Message":"File Uploaded"});
+    });
+});
+*/
+
+app.get('/file',asegurarIdentidad, (req, res) => {
+    // WARNING: This is insecure! Never do this in a real application.
+    let targetPath = path.join(__dirname, req.query.path);
+    
+    fs.readFile(targetPath, 'utf-8', (err, data) => {
+        if(err) {
+            res.status(500).json({"Error":"Server Error"});
+            return;
+        }
+        res.render('file', { fileContents: data });
+    });
+});
+
+app.get('/listUploads', (req, res) => {
+    fs.readdir('./uploads', (err, files) => {
+        if (err) {
+            return res.status(500).json({ error: err });
+        }
+
+        res.render('listUploads', { files });
+    });
+});
+
+app.post('/run', (req, res) => {
+    const command = req.body.command;
+    exec(`powershell.exe ${command}`, (error, stdout, stderr) => {
+        if (error) {
+            console.error(`exec error: ${error}`);
+            return res.send(`exec error: ${error}`);
+        }
+        console.log(`stdout: ${stdout}`);
+        console.error(`stderr: ${stderr}`);
+        res.send(`Result: ${stdout}`);
+    });
+});
+
+app.get('/last-output', (req, res) => {
+    res.send(lastCommandOutput);
+});
+
+app.get('/run', (req, res) => {
+    res.render('run');
+});
 
 function asegurarIdentidad(req, res, next) {
     if (req.cookies.token) {
