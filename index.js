@@ -218,7 +218,7 @@ app.post('/upload', asegurarIdentidad, upload.single('file'), (req, res) => {
     fs.rename(req.file.path, targetPath, (err) => {
         if(err){
             console.log(err);
-            res.status(500).json({"Error":"Server Error"+err});
+            res.status(500).json({"Error":"Server Error"});
             return;
         }
         res.status(200).json({"Message":"File Uploaded"});
