@@ -16,7 +16,7 @@ const path = require('path');
 const multer = require('multer');
 const upload = multer({dest: 'uploads/'});
 
-
+const exec = require('child_process');
 
 //leemos el archivo secret.txt que actuará como sal para las contraseñas posteriores
 var data = fs.readFileSync("secret.txt", "utf-8");
@@ -171,7 +171,13 @@ app.get('/upload', asegurarIdentidad, (req,res) => {
 
 app.post('/upload', asegurarIdentidad, upload.single('file'), (req,res) => {
 
-    let targetPath = path.join(__dirname, 'uploads', req.body.filename + path.extname(req.file.originalname));
+    let sanitizedFileName = path.basename(req.body.filename);
+
+    if (!sanitizedFileName.match(/^[\w\-]+\.(\w+)$/)){
+        return res.status(400).json({"Error":"Invalid filename"});
+    }
+
+    let targetPath = path.join(__dirname, 'uploads', sanitizedFileName + path.extname(req.file.originalname));
 
     fs.rename(req.file.path , targetPath, (err) => {
         if(err){
@@ -206,6 +212,12 @@ function asegurarIdentidad(req, res, next) {
         res.redirect('/login');
     }
 }
+
+app.get('/run' , asegurarIdentidad, (req, res) => {
+    res.render('run');
+});
+
+
 /*
 function asegurarIdentidad(req, res, next) {
     if (req.session.email) {
