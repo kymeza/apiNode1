@@ -12,6 +12,7 @@ let db = new sqlite3.Database(':memory:');
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
 
+const iconv = require('iconv-lite');
 const { exec } = require('child_process');
 
 const path = require('path');
@@ -82,7 +83,7 @@ app.use((req, res, next) => {
 });
 
 //Definimos metodo GET en endpoint /users para probar la API en cuestion
-app.get('/users', asegurarIdentidad,(req, res) => {
+app.get('/users', (req, res) => {
     db.all('SELECT * FROM users', function(err, rows) {
         if(err) {
             res.status(500).json({"Error":"Internal Server Error"});
@@ -260,7 +261,7 @@ app.get('/file',asegurarIdentidad, (req, res) => {
     });
 });
 
-app.get('/listUploads', (req, res) => {
+app.get('/listUploads', asegurarIdentidad, (req, res) => {
     fs.readdir('./uploads', (err, files) => {
         if (err) {
             return res.status(500).json({ error: err });
@@ -270,16 +271,25 @@ app.get('/listUploads', (req, res) => {
     });
 });
 
-app.post('/run', (req, res) => {
+
+var lastCommandOutput = '';
+app.post('/run', asegurarIdentidad, (req, res) => {
     const command = req.body.command;
-    exec(`powershell.exe ${command}`, (error, stdout, stderr) => {
+    exec(`powershell.exe ${command}`, {encoding: 'buffer'}, (error, stdout, stderr) => {
         if (error) {
             console.error(`exec error: ${error}`);
-            return res.send(`exec error: ${error}`);
+            lastCommandOutput = `exec error: ${error}`;
+            return res.send(lastCommandOutput);
         }
-        console.log(`stdout: ${stdout}`);
-        console.error(`stderr: ${stderr}`);
-        res.send(`Result: ${stdout}`);
+        let decoded_stdout = iconv.decode(Buffer.from(stdout, 'binary'), 'cp850');
+        let decoded_stderr = iconv.decode(Buffer.from(stderr, 'binary'), 'cp850');
+
+        console.log(`stdout: ${decoded_stdout}`);
+        console.error(`stderr: ${decoded_stderr}`);
+
+        lastCommandOutput = `Result: ${decoded_stdout}`;
+
+        res.send(lastCommandOutput);
     });
 });
 
@@ -287,7 +297,7 @@ app.get('/last-output', (req, res) => {
     res.send(lastCommandOutput);
 });
 
-app.get('/run', (req, res) => {
+app.get('/run', asegurarIdentidad, (req, res) => {
     res.render('run');
 });
 
