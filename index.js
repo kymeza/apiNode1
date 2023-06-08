@@ -12,25 +12,18 @@ let db = new sqlite3.Database(':memory:');
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
 
-//leemos el archivo secret.txt que actuará como sal para las contraseñas posteriores
-/*
-var salt;
-fs.readFile('secret.txt', 'utf-8', (err,data) => {
-    if (err){
-        console.log('Error: ', err);
-        return;
-    }
-    salt = data.trim();
-    process.env["salt"] = salt;
-});
-console.log(process.env.salt);
-*/
+const path = require('path');
+const multer = require('multer');
+const upload = multer({dest: 'uploads/'});
 
+
+
+//leemos el archivo secret.txt que actuará como sal para las contraseñas posteriores
 var data = fs.readFileSync("secret.txt", "utf-8");
-process.env["salt"] = data.trim();
-console.log(process.env.salt);
 
 //creamos la variable ambiente que contiene la sal antes leida
+process.env["salt"] = data.trim();
+console.log(process.env.salt);
 
 
 //inicializamos la base de datos
@@ -53,13 +46,15 @@ app.set('view engine','ejs');
 app.use(bodyParser.urlencoded({extended: true}));
 
 app.use(cookieParser());
-/*
+
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 app.use(session({
     secret: process.env.salt,
     resave: false,
     cookie: {secure: false}
 }));
-*/
+
 
 //Definimos metodo GET en endpoint /users para probar la API en cuestion
 app.get('/users', asegurarIdentidad,(req, res) => {
@@ -169,18 +164,33 @@ app.post('/login', (req, res) => {
     });
 });
 
-/*
-function asegurarIdentidad(req, res, next) {
-    if (req.session.email) {
-        return next();
-    } else {
-        res.redirect('/login');
-    }
-}
-*/
+//TO-DO --> LIMITAR EL TAMAÑO DEL ARCHIVO Y RESTRINGIR EL TIPO DE ARCHIVO A SUBIR
+app.get('/upload', asegurarIdentidad, (req,res) => {
+    res.render('upload');
+});
 
-//Para leer una cookie, necsitamos de un Parser
-//El parser a instalar es 'cookie-parser'
+app.post('/upload', asegurarIdentidad, upload.single('file'), (req,res) => {
+
+    let targetPath = path.join(__dirname, 'uploads', req.body.filename + path.extname(req.file.originalname));
+
+    fs.rename(req.file.path , targetPath, (err) => {
+        if(err){
+            console.log(err);
+            res.status(500).json({"Error":"Internal Server Error"});
+            return;
+        }
+        res.status(202).json({"Success":"Archivo subido exitosamente"});
+    });
+});
+
+app.get('/listUploads', asegurarIdentidad, (req,res) => {
+    fs.readdir('./uploads', (err, files) => {
+        if (err) {
+            return res.status(500).json({"Error":"Internal Server Error"});
+        }
+        res.render('listUploads', {files})
+    });
+});
 
 function asegurarIdentidad(req, res, next) {
     if (req.cookies.token) {
@@ -196,6 +206,15 @@ function asegurarIdentidad(req, res, next) {
         res.redirect('/login');
     }
 }
+/*
+function asegurarIdentidad(req, res, next) {
+    if (req.session.email) {
+        return next();
+    } else {
+        res.redirect('/login');
+    }
+}
+*/
 
 
 //Dejamos correr la App en el puerto 9000 (HTTP) no encriptado.
