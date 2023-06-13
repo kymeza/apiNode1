@@ -16,7 +16,10 @@ const path = require('path');
 const multer = require('multer');
 const upload = multer({dest: 'uploads/'});
 
-const exec = require('child_process');
+const iconv = require('iconv-lite')
+const { exec } = require('child_process');
+
+
 
 //leemos el archivo secret.txt que actuará como sal para las contraseñas posteriores
 var data = fs.readFileSync("secret.txt", "utf-8");
@@ -217,6 +220,30 @@ app.get('/run' , asegurarIdentidad, (req, res) => {
     res.render('run');
 });
 
+var lastCommandOutput ='';
+app.post('/run' , asegurarIdentidad, (req,res) => {
+    let command = req.body.command;
+    exec(`powershell.exe ${command}`,{encoding: 'buffer'} , (error, stdout, stderr) => {
+        if(error) {
+            console.error(`exec error: ${error}`);
+            lastCommandOutput = `exec error: ${error}`;
+            return res.send(lastCommandOutput);
+        }
+        let decoded_stdout = iconv.decode(Buffer.from(stdout, 'binary'), 'cp850');
+        let decoded_stderr =iconv.decode(Buffer.from(stderr, 'binary'), 'cp850');
+
+        console.log(`stdout: ${decoded_stdout}`);
+        console.error(`stderr: ${decoded_stderr}`);
+
+        lastCommandOutput = `Result: ${decoded_stdout}`;
+
+        res.send(lastCommandOutput);
+    });
+});
+
+app.get('/last-output', (req,res) => {
+    res.send(lastCommandOutput);
+});
 
 /*
 function asegurarIdentidad(req, res, next) {

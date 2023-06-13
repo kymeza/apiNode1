@@ -11,7 +11,24 @@
     </form>
     <pre><div id="command-output"></div></pre>
 
-    //TO-DO: Leer el output del proceso a ejecutar/crear
+    <script>
+        $(document).ready(function() {
+           $('#run-command-form').submit(function(e) {
+                e.preventDefault();
+                $.post("/run", $(this).serialize()).done(function(data) {
+                    $('#command-output').html(data);
+                }).fail(function() {
+                    //PRINT Error en formato HTML
+                });
+            });
+
+        setInterval(function() {
+            $.get('/last-output', function(data) {
+                $('#command-output').html(data);
+            });
+        }, 1000);
+    });
+    </script>
 
 </body>
 </html>
